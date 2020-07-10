@@ -198,16 +198,16 @@ def process_command_line():
         description="Test relative imports in javascript project."
     )
     parser.add_argument(
-        "-d",
+        "directory",
         metavar="<directory>",
-        default=[""],
+        default=["."],
         type=str,
-        nargs=1,
+        nargs='?', # 0 or 1
         help="path to project directory"
     )
     args = parser.parse_args()
 
-    relative_path_to_proj_dir = next(iter(args.d), "")
+    relative_path_to_proj_dir = next(iter(args.directory), "")
     current_dir = os.getcwd()
     return os.path.abspath(relative_path_to_proj_dir)
 
