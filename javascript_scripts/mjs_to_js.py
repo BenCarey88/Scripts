@@ -8,7 +8,7 @@ DIRECTORY = os.path.normpath(
     )
 )
 
-print DIRECTORY
+print (DIRECTORY)
 
 for subdir, dirs, files in os.walk(DIRECTORY):
     for filename in files:
@@ -18,5 +18,5 @@ for subdir, dirs, files in os.walk(DIRECTORY):
                 subdir,
                 filename.rstrip("mjs") + "js"
             )
-            #print "OLD FILE: ", filepath, "\nNEW_FILE: ", new_filepath, "\n\n"
+            #print ("OLD FILE: ", filepath, "\nNEW_FILE: ", new_filepath, "\n\n")
             os.rename(filepath, new_filepath)
