@@ -236,9 +236,9 @@ def get_error_message():
     error_message = "IMPORT/EXPORT ERRORS FOUND:\n\n{0}"
     no_error_message = "NO IMPORT/EXPORT ERRORS FOUND"
     details = ""
-    for filename, info in DATABASE.iteritems():
+    for filename, info in DATABASE.items():
         file_details = ""
-        for error_type, error_list in info["errors"].iteritems():
+        for error_type, error_list in info["errors"].items():
             if error_type != "exports":
                 if error_list:
                     message = "\t" + error_type.upper() + "\n\t\t" + "\n\t\t".join(error_list)
@@ -256,4 +256,4 @@ def get_error_message():
 if __name__ == "__main__":
     directory = process_command_line()
     fill_database(directory)
-    print get_error_message()
+    print (get_error_message())
