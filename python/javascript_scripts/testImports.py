@@ -65,7 +65,11 @@ def search_imports_and_exports(file_path):
         file_path.split(os.sep)[:-1]
     )
     with open(file_path, "r") as js_file:
-        contents = js_file.read()
+        try:
+            contents = js_file.read()
+        except:
+            print ("\n[WARNING]: could not read ", file_path, "\n")
+            return exports
 
     for pattern in patterns:
         start_pos = 0
@@ -164,7 +168,11 @@ def test_file_recursion(current_file, start_file, file_list=[], file_list_to_dis
         current_file.split(os.sep)[:-1]
     )
     with open(current_file, "r") as js_file:
-        contents = js_file.read()
+        try:
+            contents = js_file.read()
+        except UnicodeDecodeError:
+            print ("\n[WARNING]: could not read ", current_file, "\n")
+            return
 
     for pattern in patterns:
         start_pos = 0
