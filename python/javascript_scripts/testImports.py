@@ -90,7 +90,7 @@ def search_imports_and_exports(file_path):
                     export_file_errors.append(new_file_path)
                 else:
                     for obj in objects:
-                        if not obj in search_imports_and_exports(new_file_path):
+                        if obj in search_imports_and_exports(new_file_path):
                             exports.append(obj)
                         else:
                             export_object_errors.append(match.group("objects"))
