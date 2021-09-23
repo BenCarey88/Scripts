@@ -23,6 +23,49 @@ IMPORT_OBJ_FROM = re.compile(
     r"(?<!//)(?P<whole>import\s+\{(?P<objects>[^\}]+)\}\s+from\s+'(?P<file>[^']+)')"
 )
 
+"""
+DATABASE:
+
+dict with the following expected structure:
+
+{
+    file_path1: {
+        "exports": list(str),
+        "recursive_imports": list(set)
+        "errors": {
+            "export_file_errors": list(str),
+            "export_object_errors": list(str),
+            "import_file_errors": list(str),
+            "import_object_errors": list(str),
+            "recursive_imports": list(list(str))
+        }
+    },
+    file_path2: {...},
+    ...
+}
+
+Keys:
+    exports (list(str)): list of js objects exported by this file
+
+    recursive_imports (list(set)): list of sets of files that represent a
+        recursive chain of imports called by this file
+
+    errors (dict): dict of errors to be printed to terminal:
+
+        export_file_errors (list(str)): list of nonexistant filepaths appearing
+            in export statements in this file
+        export_object_errors (list(str)): list of objects appearing in export
+            statements in this file that cannot be imported
+        import_file_errors (list(str)): list of nonexistant filepaths appearing
+            in import statements in this file
+        import_object_errors (list(str)): list of objects appearing in import
+            statements in this file that cannot be imported
+        recursive_imports (list(list(str))): list of lists of files that
+            represent a recursive chain of imports called by this file. This
+            field will only be filled if the outer recursive_imports key didn't
+            already contain this list. This allows us to only print a recursion
+            error for one of the files in the chain.
+"""
 DATABASE = dict()
 
 
@@ -157,9 +200,16 @@ def test_file_recursion(current_file, start_file, file_list=None, file_list_to_d
 
     if current_file in file_list:
         if current_file == start_file:
-            DATABASE[start_file]["errors"]["recursive_imports"] = (
-                file_list_to_display + [current_file]
-            )
+            already_covered_recursions = DATABASE[start_file].get("recursive_imports", [])
+            if set(file_list_to_display) not in already_covered_recursions:
+                for file in file_list_to_display:
+                    # add to list of recursive imports so we don't repeat the same error
+                    DATABASE[file].setdefault("recursive_imports", []).append(
+                        set(file_list_to_display)
+                    )
+                DATABASE[start_file]["errors"].setdefault("recursive_imports", []).append(
+                    file_list_to_display + [current_file]
+                )
         return
 
     file_list.append(current_file)
@@ -261,10 +311,15 @@ def get_error_message():
     for filename, info in DATABASE.items():
         file_details = ""
         for error_type, error_list in info["errors"].items():
-            if error_type != "exports":
-                if error_list:
-                    message = "\t" + error_type.upper() + "\n\t\t" + "\n\t\t".join(error_list)
-                    file_details += message + "\n"
+            if error_list:
+                message = "\t" + error_type.upper() + "\n\t\t"
+                if error_type == "recursive_imports":
+                    message += "\n\n\t\t".join(
+                        ["\n\t\t".join(sublist) for sublist in error_list]
+                    ) 
+                else:
+                    message += "\n\t\t".join(error_list)
+                file_details += message + "\n"
         if file_details:
             details += filename + "\n" + file_details + "\n\n"
 
