@@ -133,7 +133,7 @@ def search_imports_and_exports(file_path):
     return exports
 
 
-def test_file_recursion(current_file, start_file, file_list=[], file_list_to_display=[]):
+def test_file_recursion(current_file, start_file, file_list=None, file_list_to_display=None):
     """Check if file imports are recursive and add to DATABASE if they are.
     
     Note this function must be run after search_imports_and_exports, since it
@@ -143,12 +143,18 @@ def test_file_recursion(current_file, start_file, file_list=[], file_list_to_dis
         current_file (str): the current_file we're searching.
         start_file (str): the file we first entered this function with, used to
             test against to see if our imports have resulted in a recursive loop.
-        file_list (list(str)): list of all files we've searched already since we
-            first entered this function.
-        file_list_to_display (list(str)): chain of imports, spanning from the
-            file we entered this function with to the current file. If imports
+        file_list (list(str) or None): list of all files we've searched already
+            since we first entered this function.
+        file_list_to_display (list(str) or None): chain of imports, spanning from
+            the file we entered this function with to the current file. If imports
             are recursive, this will be the chain we show in the error message.
+            This differs from file_list in that it will only include the offending
+            chain, whereas file_list may include additional 'dead-end' files that
+            were searched but contained no recursive imports.
     """
+    file_list = file_list or []
+    file_list_to_display = file_list_to_display or []
+
     if current_file in file_list:
         if current_file == start_file:
             DATABASE[start_file]["errors"]["recursive_imports"] = (
@@ -184,6 +190,14 @@ def test_file_recursion(current_file, start_file, file_list=[], file_list_to_dis
                 os.path.join(dir_path, relative_file_path)
             )
             if os.path.isfile(new_file_path):
+                """Note the distinction:
+
+                With file_list, we mutate the list object, so it contains all
+                files we've searched since we first entered the function
+
+                With file_list to display, we create a new variable to pass
+                into the function, so it does not contain any dead-end files.
+                """
                 test_file_recursion(
                     new_file_path,
                     start_file,
@@ -232,7 +246,7 @@ def fill_database(directory_path):
             filepath = os.path.join(subdir, filename)
             if filepath.endswith(".js") or filepath.endswith(".mjs"):
                 search_imports_and_exports(filepath)
-                test_file_recursion(filepath, filepath, file_list=[])
+                test_file_recursion(filepath, filepath)
 
 
 def get_error_message():
