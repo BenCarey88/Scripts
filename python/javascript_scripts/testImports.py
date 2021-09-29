@@ -45,22 +45,22 @@ dict with the following expected structure:
 }
 
 Keys:
-    exports (list(str)): list of js objects exported by this file
+    * exports (list(str)): list of js objects exported by this file
 
-    recursive_imports (list(set)): list of sets of files that represent a
+    * recursive_imports (list(set)): list of sets of files that represent a
         recursive chain of imports called by this file
 
-    errors (dict): dict of errors to be printed to terminal:
+    * errors (dict): dict of errors to be printed to terminal:
 
-        export_file_errors (list(str)): list of nonexistant filepaths appearing
+        * export_file_errors (list(str)): list of nonexistant filepaths appearing
             in export statements in this file
-        export_object_errors (list(str)): list of objects appearing in export
+        * export_object_errors (list(str)): list of objects appearing in export
             statements in this file that cannot be imported
-        import_file_errors (list(str)): list of nonexistant filepaths appearing
+        * import_file_errors (list(str)): list of nonexistant filepaths appearing
             in import statements in this file
-        import_object_errors (list(str)): list of objects appearing in import
+        * import_object_errors (list(str)): list of objects appearing in import
             statements in this file that cannot be imported
-        recursive_imports (list(list(str))): list of lists of files that
+        * recursive_imports (list(list(str))): list of lists of files that
             represent a recursive chain of imports called by this file. This
             field will only be filled if the outer recursive_imports key didn't
             already contain this list. This allows us to only print a recursion
@@ -263,8 +263,7 @@ def process_command_line():
     """Setup command line parser and return directory to check.
 
     Returns:
-        (str): absolute path to directory to check for import/export
-            errors in.
+        (argparse.Namespace): arguments from commandline.
     """
     parser = argparse.ArgumentParser(
         description="Test relative imports in javascript project."
@@ -272,16 +271,17 @@ def process_command_line():
     parser.add_argument(
         "directory",
         metavar="<directory>",
-        default=["."],
+        default=".",
         type=str,
         nargs='?', # 0 or 1
         help="path to project directory"
     )
-    args = parser.parse_args()
-
-    relative_path_to_proj_dir = next(iter(args.directory), "")
-    current_dir = os.getcwd()
-    return os.path.abspath(relative_path_to_proj_dir)
+    parser.add_argument(
+        "-ap", "--absolute-paths",
+        action="store_true",
+        help="print absolute paths rather than relative to input directory"
+    )
+    return parser.parse_args()
 
 
 def fill_database(directory_path):
@@ -299,24 +299,56 @@ def fill_database(directory_path):
                 test_file_recursion(filepath, filepath)
 
 
-def get_error_message():
+def _format_paths(path_list, from_directory=None):
+    """Format paths in list to be relative to given directory.
+
+    Args:
+        path_list (list(str)): list of absolute paths.
+        from_directory (str or None): directory to make paths relative to.
+            If None, keep paths absolute.
+
+    Returns:
+        (list(str)): list of formatted paths.
+    """
+    if not from_directory:
+        return path_list
+    return [os.path.relpath(f, from_directory) for f in path_list]
+
+
+def get_error_message(from_directory=None):
     """Get import and export error messages for DATABASE.
+
+    Args:
+        from_directory (str or None): if given, return filepaths relative
+            to the given directory.
 
     Returns:
         (str): string to display error messages.
     """
-    error_message = "IMPORT/EXPORT ERRORS FOUND:\n\n{0}"
-    no_error_message = "NO IMPORT/EXPORT ERRORS FOUND"
+    error_message = "\nIMPORT/EXPORT ERRORS FOUND:\n\n{0}"
+    no_error_message = "\nNO IMPORT/EXPORT ERRORS FOUND"
     details = ""
     for filename, info in DATABASE.items():
+        if from_directory:
+            filename = os.path.relpath(filename, from_directory)
         file_details = ""
         for error_type, error_list in info["errors"].items():
             if error_list:
                 message = "\t" + error_type.upper() + "\n\t\t"
+                # format recursive import errors (error_list is list of list of paths)
                 if error_type == "recursive_imports":
                     message += "\n\n\t\t".join(
-                        ["\n\t\t".join(sublist) for sublist in error_list]
-                    ) 
+                        [
+                            "\n\t\t".join(_format_paths(sublist, from_directory))
+                            for sublist in error_list
+                        ]
+                    )
+                # format file errors (error_list is list of paths)
+                elif error_type in ["import_file_errors", "export_file_errors"]:
+                    message += "\n\t\t".join(
+                        _format_paths(error_list, from_directory)
+                    )
+                # remaining errors are list of strings, don't need formatting
                 else:
                     message += "\n\t\t".join(error_list)
                 file_details += message + "\n"
@@ -331,6 +363,8 @@ def get_error_message():
 
 
 if __name__ == "__main__":
-    directory = process_command_line()
+    args = process_command_line()
+    relative_path_to_proj_dir = args.directory or "."
+    directory = os.path.abspath(relative_path_to_proj_dir)
     fill_database(directory)
-    print (get_error_message())
+    print (get_error_message(None if args.absolute_paths else directory))
