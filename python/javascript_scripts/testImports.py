@@ -136,7 +136,7 @@ def search_imports_and_exports(file_path):
                         if obj in search_imports_and_exports(new_file_path):
                             exports.append(obj)
                         else:
-                            export_object_errors.append(match.group("objects"))
+                            export_object_errors.append(obj)
 
             elif pattern == EXPORT_ALL_FROM:
                 relative_file_path = match.group("file")
@@ -198,15 +198,19 @@ def test_file_recursion(current_file, start_file, file_list=None, file_list_to_d
     file_list = file_list or []
     file_list_to_display = file_list_to_display or []
 
+    # if current file has been looked at before, we return
     if current_file in file_list:
-        if current_file == start_file:
+        # and if current file is first file, we've reached a recursive chain
+        if current_file in file_list_to_display and current_file == start_file:
             already_covered_recursions = DATABASE[start_file].get("recursive_imports", [])
+            # and if that recursive chain hasn't already been recorded, we need to add it
             if set(file_list_to_display) not in already_covered_recursions:
+                # add recursive chain to recursive imports key for all files in chain
                 for file in file_list_to_display:
-                    # add to list of recursive imports so we don't repeat the same error
                     DATABASE[file].setdefault("recursive_imports", []).append(
                         set(file_list_to_display)
                     )
+                # and add the error just to first file in chain, so we only display it once
                 DATABASE[start_file]["errors"].setdefault("recursive_imports", []).append(
                     file_list_to_display + [current_file]
                 )
@@ -243,9 +247,9 @@ def test_file_recursion(current_file, start_file, file_list=None, file_list_to_d
                 """Note the distinction:
 
                 With file_list, we mutate the list object, so it contains all
-                files we've searched since we first entered the function
+                files we've searched since we first entered the function.
 
-                With file_list to display, we create a new variable to pass
+                With file_list_to_display, we create a new variable to pass
                 into the function, so it does not contain any dead-end files.
                 """
                 test_file_recursion(
@@ -291,12 +295,20 @@ def fill_database(directory_path):
         directory_path (str): absolute path to directory to check for
             import/export errors in.
     """
+    # TODO: I believe we can speed this up by passing in this checked_files_list
+    # variable to the 3rd of test_file_recursion. This should (if I'm following
+    # everything correctly) ensure every file is only ever fully checked once,
+    # whereas without it I think each file is fully checked once for each
+    # other file that imports from it at some point in a chain
+    # this should probably be tested and double checked to ensure it doesn't
+    # break anything though.
+    checked_files_list = []
     for subdir, dirs, files in os.walk(directory_path):
         for filename in files:
             filepath = os.path.join(subdir, filename)
             if filepath.endswith(".js") or filepath.endswith(".mjs"):
                 search_imports_and_exports(filepath)
-                test_file_recursion(filepath, filepath)
+                test_file_recursion(filepath, filepath, checked_files_list)
 
 
 def _format_paths(path_list, from_directory=None):
