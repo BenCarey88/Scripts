@@ -1,3 +1,5 @@
+"""Script to make tests for my javascript paint game."""
+
 import sys
 import os
 import argparse

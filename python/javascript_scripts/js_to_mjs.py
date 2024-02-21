@@ -1,3 +1,4 @@
+"""Script to convert .mjs javascript files to .js files."""
 
 import argparse
 import os

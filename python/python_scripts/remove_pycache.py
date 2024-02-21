@@ -1,3 +1,5 @@
+"""Script to remove all pycache files from all subdirectories."""
+
 import os
 import shutil
 

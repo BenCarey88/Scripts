@@ -1,3 +1,5 @@
+"""Script to test various import problems across a javascript directory."""
+
 import argparse
 import os
 import os.path
@@ -195,8 +197,10 @@ def test_file_recursion(current_file, start_file, file_list=None, file_list_to_d
             chain, whereas file_list may include additional 'dead-end' files that
             were searched but contained no recursive imports.
     """
-    file_list = file_list or []
-    file_list_to_display = file_list_to_display or []
+    file_list = file_list if file_list is not None else []
+    file_list_to_display = (
+        file_list_to_display if file_list_to_display is not None else []
+    )
 
     # if current file has been looked at before, we return
     if current_file in file_list:
